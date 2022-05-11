@@ -90,7 +90,10 @@ resource "aws_cloudtrail" "digitaldimensionstrailsource" {
 
 
 }
-
+#creating a cloudwatch log group to intercept information
+resource "aws_cloudwatch_log_group" "digitaldimensionstraillogs" {
+  name = "digitaldimensionstraillogs"
+}
 #Giving permissions to CloudWatch to access CloudTrail Logs
 resource "aws_iam_role" "assume_cloudtrail" {
   name = "role-access-for-Cloudwatch"
@@ -131,7 +134,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
   }
 }
 
-#ye old bucket of logs about logs
+#ye old bucket of logs about logs, ideally it should be another bucket in a main account away from the user
 resource "aws_s3_bucket" "haveyoubeenplayingwithmylogs" {
   bucket        = "haveyoubeenplayingwithmylogs"
   force_destroy = true
@@ -145,8 +148,100 @@ resource "aws_s3_bucket_logging" "example" {
   target_prefix = "log/"
 }
 
-#creating a cloudwatch log group to intercept information
-resource "aws_cloudwatch_log_group" "digitaldimensionstraillogs" {
-  name = "digitaldimensionstraillogs"
+
+#Creating SNS Topic for alerting suspicious behaviour
+resource "aws_sns_topic" "sus_behaviour" {
+  name = "sus_behaviour"
+}
+#Creating an email subscription for alerts
+resource "aws_sns_topic_subscription" "email_sec" {
+  topic_arn = aws_sns_topic.sus_behaviour.arn
+  protocol  = "email"
+  endpoint  = "emailmebro@exampleemail.com"
+}
+#Detecting Suspicious API Calls
+resource "aws_cloudwatch_log_metric_filter" "badAPI" {
+
+  log_group_name = aws_cloudwatch_log_group.digitaldimensionstraillogs.name
+  name           = "badAPICall"
+  pattern        = "{ ($.errorCode = *UnauthorizedOperation) || ($.errorCode = AccessDenied*) }"
+
+  metric_transformation {
+    name      = "numberofBadAPICalls"
+    namespace = "BadAPICalls"
+    value     = "1"
+  }
 }
 
+
+resource "aws_cloudwatch_metric_alarm" "badAPIalarm" {
+
+  alarm_name          = "badAPIcall_alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  namespace           = "BadAPICalls"
+
+  period        = "60"
+  statistic     = "Sum"
+  metric_name   = "Suspicious_Behaviour_Metrics"
+  threshold     = "0"
+  alarm_actions = ["${aws_sns_topic.sus_behaviour.arn}"]
+}
+
+#Detecting Login with no MFA
+resource "aws_cloudwatch_log_metric_filter" "noMFA" {
+
+  log_group_name = aws_cloudwatch_log_group.digitaldimensionstraillogs.name
+  name           = "noMFALogin"
+  pattern        = "{ ($.eventName = ConsoleLogin) && ($.additionalEventData.MFAUsed = No) }"
+
+  metric_transformation {
+    name      = "noMFANumber"
+    namespace = "noMFALogins"
+    value     = "1"
+  }
+}
+
+
+resource "aws_cloudwatch_metric_alarm" "noMFAalarm" {
+
+  alarm_name          = "NoMFALogin_alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  namespace           = "NoMFALogins"
+
+  period        = "60"
+  statistic     = "Sum"
+  metric_name   = "Suspicious_Behaviour_Metrics"
+  threshold     = "0"
+  alarm_actions = ["${aws_sns_topic.sus_behaviour.arn}"]
+}
+
+#Detecting root user usage
+resource "aws_cloudwatch_log_metric_filter" "rootLogin" {
+
+  log_group_name = aws_cloudwatch_log_group.digitaldimensionstraillogs.name
+  name           = "rootLogin"
+  pattern        = "{$.userIdentity.type = Root}"
+
+  metric_transformation {
+    name      = "numberofrootLogins"
+    namespace = "RootLogins"
+    value     = "1"
+  }
+}
+
+
+resource "aws_cloudwatch_metric_alarm" "rootLoginalarm" {
+
+  alarm_name          = "rootLogin_alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  namespace           = "RootLogins"
+
+  period        = "60"
+  statistic     = "Sum"
+  metric_name   = "Suspicious_Behaviour_Metrics"
+  threshold     = "0"
+  alarm_actions = ["${aws_sns_topic.sus_behaviour.arn}"]
+}
