@@ -12,3 +12,4 @@ provider "aws" {
   # Configuration options fetched from AWS CLI
 }
 
+

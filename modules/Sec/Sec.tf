@@ -245,3 +245,21 @@ resource "aws_cloudwatch_metric_alarm" "rootLoginalarm" {
   threshold     = "0"
   alarm_actions = ["${aws_sns_topic.sus_behaviour.arn}"]
 }
+
+#VPC Deletion
+
+#We started here, later created two new modules to work on destruction of VPC to ensure it works in every region.
+
+# resource "aws_default_vpc" "default" {
+#   tags = {
+#     Name = "Default VPC"
+#   }
+#   force_destroy = true
+#   # Trying to itterate over list of regions
+#   # count  = length(var.regions)
+#   # provider = var.regions[count.index]
+# }
+module "vpcdestroyer" {
+  source = "../vpcdestroyer"
+}
+

@@ -33,10 +33,10 @@
 
 # Design Structure
 
-This is the key project structure in a tree diagram
+This is the key project structure in a tree diagram. It portrays what is the key functional component of this exercise. The idea is to create a reusable module then have a main file call it. 
 
 ```
-TaskforDD
+BasicSecurityHardening
   ├───modules 
   │   └───Sec
   |        └───Sec.tf
@@ -46,3 +46,23 @@ TaskforDD
   └───providers.tf
 ```
 
+# Final Structure
+
+There are more files there but this is the useful struture. During this time due to limitations encountered in recursions I had to create two extra modules. One that simply destroys the VPC in the current region and another one that calls the module that destroys in every region. I then call the module that destroyes every region in the security file.
+The levels of abstraction are there to remove the complexity for the end user. They can just call the module that hardens their account. 
+
+```
+BasicSecurityHardening
+└───modules
+    ├───Sec
+    |    └───Sec.tf
+    |    └───providers.tf
+    |    └───variables.tf
+    |    └───terraform.tfvars
+    ├───vpcdestroyer
+    |    └───vpcdestroyer.tf
+    |    └───providers.tf
+    |    └───variables.tf
+    └───vpcdestroyerbase
+    |    └───vpcdestroyerbase.tf
+    └───main.tf
